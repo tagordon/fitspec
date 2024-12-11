@@ -9,7 +9,7 @@ import multiprocess.context as ctx
 ctx._force_start_method('spawn')
 
 from distributions import *
-from transit_parameterization import *
+from transit import *
 from utils import *
 
 def build_mask(time, flux, fixed_params, mask_buffer=50):

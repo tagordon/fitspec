@@ -9,7 +9,7 @@ import multiprocess.context as ctx
 ctx._force_start_method('spawn')
 
 from distributions import *
-from transit_parameterization import *
+from transit import *
 from utils import *
 
 ld_data_path = os.environ['EXO_LD_PATH']

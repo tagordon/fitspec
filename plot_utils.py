@@ -7,7 +7,7 @@ from astropy.stats import sigma_clip
 import celerite2
 
 from distributions import *
-from transit_parameterization import *
+from transit import *
 from wl_utils import _unpack_params, get_trend_model
 
 def get_model_from_sample(time, p, detrending_vectors=None, polyorder=1, gp=False, flux=None):
