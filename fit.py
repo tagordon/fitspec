@@ -136,7 +136,8 @@ def fit_wlc(
         'wavs': wavs,
         'stellar_params': stellar_params,
         'cube': cube,
-        'detrending_vectors': detrending_vectors
+        'detrending_vectors': detrending_vectors,
+        'polyorder': polyorder
     }
 
     if save_chains:
@@ -145,14 +146,9 @@ def fit_wlc(
     return result_dir
 
 def fit_spec(
-    #time, 
-    #spec, 
-    #wavs,
-    #stellar_params,
     wl_results,
     wav_per_bin=0.02,
-    polyorder=1,
-    #cube=None, 
+    polyorder=None, 
     out_dir='./', 
     samples=10000, 
     burnin=5000, 
@@ -164,18 +160,31 @@ def fit_spec(
     detrending_vectors=None,
     save_chains=True,
     return_chains=False,
-    progress=False
+    progress=False,
+    gp=None
 ):
+
+    if polyorder is None:
+        polyorder = wl_results['polyorder']
+
+    if (not wl_results['gp']) & gp:
+        raise AttributeError(
+            '''
+            Cannot use GP model for spectral 
+            fitting if a GP was not used for 
+            white light fitting.
+            '''
+        )
+    if gp is None:
+        gp = wl_results['gp']
 
     time = wl_results['time']
     spec = wl_results['spec']
     stellar_params = wl_results['stellar_params']
     cube = wl_results['cube']
     detector = wl_results['detector']
-    gp = wl_results['gp']
     wl_params = wl_results['wl_params']
     wavs = wl_results['wavs']
-    #detrending_vectors = wl_results['detrending_vectors']
 
     if n_pca_components is not None:
         n_pca_components = len(wl_results['pca_components'].T)

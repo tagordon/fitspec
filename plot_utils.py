@@ -10,7 +10,25 @@ from distributions import *
 from transit import *
 from wl_utils import _unpack_params, get_trend_model
 
-def get_model_from_sample(time, p, detrending_vectors=None, polyorder=1, gp=False, flux=None):
+def get_canonical_params(result, polyorder):
+
+    detrending_vectors = result['detrending_vectors']
+    polyorder = result['polyorder']
+    gp = result['gp']
+
+    if detrending_vectors is None:
+        ncoeffs = 1 + polyorder
+    else:
+        ncoeffs = 1 + polyorder + len(detrending_vectors.T)
+
+    if gp:
+        p = result['chains'][:, :, 5 + ncoeffs:]
+    else:
+        p = result['chains'][:, :, 3 + ncoeffs:]
+
+    return np.array(np.vectorize(canon_from_eastman)(*p.T))
+
+def _get_model_from_sample(time, p, detrending_vectors=None, polyorder=1, gp=False, flux=None):
 
     if detrending_vectors is None:
         len_det = 0
@@ -44,6 +62,28 @@ def get_model_from_sample(time, p, detrending_vectors=None, polyorder=1, gp=Fals
     return mu * f, trend
 
 def get_wl_models(wl_results, nsamples=100):
+    '''
+    Get posterior samples for the the transit model, 
+    systematics model, and GP model (if applicable).
+
+    Args:
+        wl_results (dict): results dictionary returned from fit_wlc
+        nsamples (int, default=100): number of posterior samples 
+        to return. 
+
+    Returns: 
+        transit models (2D array): the transit model
+        systematics models (2D array): polynomial + linear combination 
+        detrending vectors and PCA vectors as specified in fit_wlc
+        GP prediction (2D array): only returned if gp=True in fit_wlc
+        f0 (1D array): the constant term of the polynomial in the systematics 
+        model, which is useful for plotting the systematics model and GP 
+        prediction.
+
+    Note: the systematics model and GP prediction vectors will have zero flux 
+    offset, so f0 should be added to these if they are to be plotted over the 
+    observations. 
+    '''
 
     time = wl_results['time']
     spec = wl_results['spec']
@@ -55,16 +95,26 @@ def get_wl_models(wl_results, nsamples=100):
     wavs = wl_results['wavs']
     mask = wl_results['mask']
     detrending_vectors = wl_results['detrending_vectors']
+    polyorder = wl_results['polyorder']
+
+    if wl_results['chains'] is None:
+        raise AttributeError(
+            '''
+            Result dictionary does not contain MCMC chains. 
+            Run fit_wlc with return_chains=True.
+            '''
+        )
 
     flux = np.sum(spec, axis=1)
     flat_samples = np.concatenate(wl_results['chains'], axis=0)
 
-    ret = get_models(
+    ret = _get_models(
         time[~mask], 
         flat_samples, 
         nsamples=100, 
         detrending_vectors=detrending_vectors, 
         gp=gp, 
+        polyorder=polyorder,
         flux=flux[~mask], 
         return_idx=True
     )
@@ -77,7 +127,7 @@ def get_wl_models(wl_results, nsamples=100):
 
     return *ret[:-1], f
 
-def get_models(time, flat_samples, nsamples=100, detrending_vectors=None, gp=False, flux=None, return_idx=False):
+def _get_models(time, flat_samples, polyorder=1, nsamples=100, detrending_vectors=None, gp=False, flux=None, return_idx=False):
 
     idx = np.random.randint(len(flat_samples), size=nsamples)
     if gp & (flux is not None):
@@ -85,11 +135,12 @@ def get_models(time, flat_samples, nsamples=100, detrending_vectors=None, gp=Fal
         sys = np.zeros((nsamples, len(time)))
         pred = np.zeros((nsamples, len(time)))
         for i, j in enumerate(idx):
-            trans[i], sys[i], pred[i] = get_model_from_sample(
+            trans[i], sys[i], pred[i] = _get_model_from_sample(
                 time, 
                 flat_samples[j], 
                 detrending_vectors=detrending_vectors, 
                 gp=gp, 
+                polyorder=polyorder,
                 flux=flux
             )
         if return_idx:
@@ -101,11 +152,12 @@ def get_models(time, flat_samples, nsamples=100, detrending_vectors=None, gp=Fal
         trans = np.zeros((nsamples, len(time)))
         sys = np.zeros((nsamples, len(time)))
         for i, j in enumerate(idx):
-            trans[i], sys[i] = get_model_from_sample(
+            trans[i], sys[i] = _get_model_from_sample(
                 time, 
                 flat_samples[j], 
                 detrending_vectors=detrending_vectors, 
                 gp=gp, 
+                polyorder=polyorder,
                 flux=flux
             )
         if return_idx:

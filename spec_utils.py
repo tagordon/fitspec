@@ -66,7 +66,7 @@ def get_initial_params(
     else:
         noise_params = [err_guess, lsigma_guess, lw0]
 
-    params = np.concatenate([[r_wlc], noise_params, coeffs])
+    params = np.concatenate([[r_wlc, u1, u2], noise_params, coeffs])
         
     return params
 
@@ -80,7 +80,7 @@ def build_logp(
     detrending_vectors=None, 
     polyorder=1, 
     gp=True,
-    fix_gp_timescale=True
+    fix_gp_timescale=True,
 ):
 
     if detrending_vectors is None:
@@ -90,16 +90,17 @@ def build_logp(
 
     u1_prior, u2_prior = get_ld_priors(start_wav, end_wav, stellar_params)
 
-    u1, u2, per, r_wlc, t0, a, V, C, Ls, Lc, S, lw0 = fixed_params
+    u1_wlc, u2_wlc, per, r_wlc, t0, a, V, C, Ls, Lc, S, lw0 = fixed_params
     per, r_wlc, t0, a, inc, e, w = canon_from_eastman(*fixed_params[2:-1])
 
     def log_prob_vary_w0(p):
 
         r = p[0]
-        err = p[1]
-        lsigma = p[2]
-        lw0 = p[3]
-        coeffs = p[4:ncoeffs + 4]
+        u1, u2 = p[1:3]
+        err = p[3]
+        lsigma = p[4]
+        lw0 = p[5]
+        coeffs = p[6:ncoeffs + 6]
         f = coeffs[0]
         trend = get_trend_model(time, detrending_vectors, coeffs[1:], polyorder)
 
@@ -135,9 +136,10 @@ def build_logp(
     def log_prob_gp(p):
 
         r = p[0]
-        err = p[1]
-        lsigma = p[2]
-        coeffs = p[3:ncoeffs + 3]
+        u1, u2 = p[1:3]
+        err = p[3]
+        lsigma = p[4]
+        coeffs = p[5:ncoeffs + 5]
         f = coeffs[0]
         trend = get_trend_model(time, detrending_vectors, coeffs[1:], polyorder)
 
@@ -168,8 +170,9 @@ def build_logp(
     def log_prob_no_gp(p):
 
         r = p[0]
-        err = p[1]
-        coeffs = p[2:ncoeffs + 2]
+        u1, u2 = p[1:3]
+        err = p[3]
+        coeffs = p[4:ncoeffs + 4]
         f = coeffs[0]
         trend = get_trend_model(time, detrending_vectors, coeffs[1:], polyorder)
 

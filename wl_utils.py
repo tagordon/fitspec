@@ -276,7 +276,7 @@ def get_initial_params(
         flux, 
         vectors=detrending_vectors, 
         mask=mask, 
-        polyorder=1, 
+        polyorder=polyorder, 
         return_coeffs=True
     )
     err_guess = np.std(flux[~mask] - fit[~mask])
@@ -385,7 +385,7 @@ def build_logp(
             
             gp.compute(time, diag=err**2)
             ll = gp.log_likelihood(flux - mu) - np.log(jac)
-
+    
             pr = compute_priors(
                 param_priors, p, u1_prior, u2_prior
             )
@@ -393,7 +393,7 @@ def build_logp(
                 2 * np.pi * 5 / (time[-1] - time[0]),
                 2 * np.pi * 50 / (time[-1] - time[0])
             ).prior(w0)
-    
+
             if np.isfinite(ll) & (err > 0):
                 return ll + pr
             else:
