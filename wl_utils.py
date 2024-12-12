@@ -166,7 +166,6 @@ def get_initial_transit_model(
         return_coeffs=True
     )
     f = coeffs[0]
-    #p_east = get_inits(param_priors)
     p_east = get_initial_transit_params(
         time,
         flux,
@@ -300,7 +299,7 @@ def get_initial_params(
         
     return params
 
-def compute_priors(param_priors, params, u1_prior, u2_prior):
+def compute_priors(param_priors, params, u1_prior, u2_prior, ld_prior):
     '''
     Compute the log-value of the prior distribution at the given 
     parameters. 
@@ -321,9 +320,13 @@ def compute_priors(param_priors, params, u1_prior, u2_prior):
     canon_params = canon_from_eastman(*params[2:])
     for p, name in zip(canon_params, pl_param_names):
         pr += param_priors[name].prior(p)
-        
-    pr += u1_prior.prior(u1)
-    pr += u2_prior.prior(u2)
+
+    if ld_prior:
+        pr += u1_prior.prior(u1)
+        pr += u2_prior.prior(u2)
+    else:
+        pr += uniform_prior(0, 1).prior(u1)
+        pr += uniform_prior(0, 1).prior(u1)
 
     return pr
         
@@ -336,7 +339,8 @@ def build_logp(
     stellar_params,
     detrending_vectors=None, 
     polyorder=1, 
-    gp=False
+    gp=False,
+    ld_priors=True
 ):
     '''
     Builds the log-pobability function, which takes an array of parameters 
@@ -387,11 +391,11 @@ def build_logp(
             ll = gp.log_likelihood(flux - mu) - np.log(jac)
     
             pr = compute_priors(
-                param_priors, p, u1_prior, u2_prior
+                param_priors, p, u1_prior, u2_prior, ld_priors
             )
             pr += uniform_prior(
-                2 * np.pi * 5 / (time[-1] - time[0]),
-                2 * np.pi * 50 / (time[-1] - time[0])
+                2 * np.pi * 2 / (time[-1] - time[0]),
+                2 * np.pi * 20 / (time[-1] - time[0])
             ).prior(w0)
 
             if np.isfinite(ll) & (err > 0):
@@ -442,7 +446,8 @@ def run(
     samples=10_000,
     progress=True,
     nproc=1,
-    gp=False
+    gp=False,
+    ld_priors=True
 ):
     '''
     Runs emcee on the model.
@@ -487,7 +492,8 @@ def run(
         stellar_params,
         detrending_vectors=detrending_vectors, 
         polyorder=polyorder, 
-        gp=gp
+        gp=gp,
+        ld_priors=ld_priors
     )
 
     pos = params + 1e-4 * np.random.randn(len(params)*2, len(params))

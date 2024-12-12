@@ -48,7 +48,8 @@ def fit_wlc(
     n_pca_components=0,
     detrending_vectors=None,
     save_chains=True,
-    return_chains=False
+    return_chains=False,
+    ld_priors=True
 ):
 
     if not validate_priors(priors):
@@ -118,7 +119,8 @@ def fit_wlc(
         samples=samples,
         progress=True,
         nproc=nproc,
-        gp=gp
+        gp=gp,
+        ld_priors=ld_priors
     )
 
     chains = sampler.get_chain()[burnin::thin, :, :]
